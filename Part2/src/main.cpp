@@ -1,25 +1,56 @@
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/labeled_graph.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/graph/adjacency_list.hpp>
 
 #include <fstream>
 #include <iostream>
 #include <iterator>
 #include <regex>
 #include <string>
+#include <unordered_map>
 
 // TODO: Change it for std::filesystem
 namespace fs = boost::filesystem;
 
-void CreateDependencyGraph(const std::string& rootDir)
+class DependencyGraph
 {
+public:
+    void AddNode(const std::string& filename) 
+    {
+        if(mNodeNames.find(filename) != mNodeNames.end())
+            return;
+
+        mNodeNames[filename] = boost::add_vertex(filename, mGraph);
+
+    }
+
+    void AddEdge(const std::string& dependency, const std::string& dependent)
+    {
+        AddNode(dependency);
+        AddNode(dependent);
+        boost::add_edge(mNodeNames[dependency], mNodeNames[dependent], mGraph);
+    }
+
+private:
+    using VertexProperty = boost::property<boost::vertex_name_t, std::string>;
+    using GraphT = boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, VertexProperty>;
+    using VertexDesc = boost::graph_traits<GraphT>::vertex_descriptor;
+
+    GraphT mGraph;
+    std::unordered_map<std::string, VertexDesc> mNodeNames;
+};
+
+DependencyGraph CreateDependencyGraph(const std::string& rootDir)
+{
+    DependencyGraph graph;
     const std::regex includeRx{ "#include (<|\")([a-zA-Z0-9]+\\.h)(>|\")" };
+
 
     for(const auto& dirEntry : fs::recursive_directory_iterator(rootDir))
     {
         if(fs::is_regular_file(dirEntry))
         {
-            std::ifstream fileStream(fs::path(dirEntry).string());
+            const std::string curFilename = fs::path(dirEntry).string();
+            std::ifstream fileStream(curFilename);
             const std::string fileContent{ std::istreambuf_iterator<char>{fileStream}, 
                                            std::istreambuf_iterator<char>{} };
             
@@ -27,10 +58,12 @@ void CreateDependencyGraph(const std::string& rootDir)
             auto rxEnd = std::sregex_iterator();
             for(; rxIt != rxEnd; ++rxIt)
             {
-                std::cout << rxIt->str(2) << "\n";
+                graph.AddEdge(rxIt->str(2), fs::path(curFilename).filename().string());
             }            
         }
     }
+
+    return graph;
 }
 
 int main(int argc, char** argv)
