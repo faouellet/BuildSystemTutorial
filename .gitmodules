@@ -1,0 +1,3 @@
+[submodule "test/SmashBot"]
+	path = test/SmashBot
+	url = https://github.com/altf4/SmashBot.git
