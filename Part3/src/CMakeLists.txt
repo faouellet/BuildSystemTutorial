@@ -14,6 +14,6 @@ set(SOURCES
 FIND_PACKAGE(Boost COMPONENTS filesystem graph REQUIRED)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
 
-add_executable(BSTPart2 ${SOURCES})
+add_executable(BSTPart3 ${SOURCES})
 
-target_link_libraries(BSTPart2 ${Boost_LIBRARIES})
+target_link_libraries(BSTPart3 ${Boost_LIBRARIES})
