@@ -17,25 +17,35 @@ class DependencyGraph
 public:
     explicit DependencyGraph(const std::string& rootDir)
     {
-        const std::regex includeRx{ "#include \"([a-zA-Z0-9]+\\.h)\"" };
+        const std::regex includeRx{ "#include \"([a-zA-Z0-9\\./]+\\.h)\"" };
 
         for(const auto& dirEntry : fs::recursive_directory_iterator(rootDir))
         {
-            if(fs::is_regular_file(dirEntry))
+            if(!fs::is_regular_file(dirEntry))
             {
-                const std::string curFilename = fs::path(dirEntry).string();
-                std::ifstream fileStream(curFilename);
-                const std::string fileContent{ std::istreambuf_iterator<char>{fileStream}, 
-                                               std::istreambuf_iterator<char>{} };
-                                           
-                auto rxIt = std::sregex_iterator(fileContent.begin(), fileContent.end(), includeRx);
-                auto rxEnd = std::sregex_iterator();
-                for(; rxIt != rxEnd; ++rxIt)
-                {
-                    std::cout << rxIt->str(1) << std::endl;
-                    AddEdge(rxIt->str(2), fs::path(curFilename).filename().string());
-                }            
+                continue;
             }
+            
+            const std::string& extension = dirEntry.path().extension().string();
+            if(extension != ".cpp" && extension != ".h")
+            {
+                continue;
+            }
+
+            const std::string curFilename = dirEntry.path().string();
+            std::cout << "Analyzing " << curFilename << "\n";
+            std::ifstream fileStream(curFilename);
+            const std::string fileContent{ std::istreambuf_iterator<char>{fileStream}, 
+                                           std::istreambuf_iterator<char>{} };
+                                       
+            auto rxIt = std::sregex_iterator(fileContent.begin(), fileContent.end(), includeRx);
+            auto rxEnd = std::sregex_iterator();
+            std::cout << "Found dependencies: " << std::distance(rxIt, rxEnd) << "\n";
+            for(; rxIt != rxEnd; ++rxIt)
+            {
+                std::cout << "\t- " << fs::absolute(rxIt->str(1), dirEntry.path().parent_path()).string() << "\n";
+                AddEdge(rxIt->str(1), fs::path(curFilename).filename().string());
+            }            
         }
     }
 
