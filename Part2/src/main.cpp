@@ -1,5 +1,6 @@
 #include <boost/filesystem.hpp>
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/graphviz.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -16,7 +17,7 @@ class DependencyGraph
 public:
     explicit DependencyGraph(const std::string& rootDir)
     {
-        const std::regex includeRx{ "#include (<|\")([a-zA-Z0-9]+\\.h)(>|\")" };
+        const std::regex includeRx{ "#include \"([a-zA-Z0-9]+\\.h)\"" };
 
         for(const auto& dirEntry : fs::recursive_directory_iterator(rootDir))
         {
@@ -31,10 +32,18 @@ public:
                 auto rxEnd = std::sregex_iterator();
                 for(; rxIt != rxEnd; ++rxIt)
                 {
+                    std::cout << rxIt->str(1) << std::endl;
                     AddEdge(rxIt->str(2), fs::path(curFilename).filename().string());
                 }            
             }
         }
+    }
+
+public:
+    void Print() const
+    {
+        std::ofstream outFileStream{"dep_graph.dot"};
+        boost::write_graphviz(outFileStream, mGraph);
     }
 
 private:
@@ -44,7 +53,6 @@ private:
             return;
 
         mNodeNames[filename] = boost::add_vertex(filename, mGraph);
-
     }
 
     void AddEdge(const std::string& dependency, const std::string& dependent)
@@ -73,6 +81,7 @@ int main(int argc, char** argv)
     else
     {
         DependencyGraph dGraph(argv[1]);
+        dGraph.Print();
     }
 
     return 0;
